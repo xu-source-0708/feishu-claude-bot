@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, JSONResponse
 import requests
 import json
 import anthropic
@@ -36,28 +36,34 @@ def send_feishu_message(user_id, content):
     }
     requests.post(url, headers=headers, json=data)
 
-
 @app.post("/webhook")
 async def feishu_webhook(request: Request):
     body = await request.json()
 
+    # 飞书验证
     if "challenge" in body:
-        return {"challenge": body["challenge"]}
+        return JSONResponse(content={"challenge": body["challenge"]})
 
-    event = body["event"]
-    user_id = event["sender"]["sender_id"]["user_id"]
-    user_input = json.loads(event["message"]["content"])["text"]
+    event = body.get("event", {})
+    message = event.get("message", {})
+    sender = event.get("sender", {})
+
+    if not message:
+        return {"status": "ok"}
+
+    user_id = sender.get("sender_id", {}).get("user_id")
+    content = json.loads(message.get("content", "{}")).get("text", "")
 
     response = client.messages.create(
         model="claude-3-7-sonnet-20250219",
-        max_tokens=1000,
+        max_tokens=500,
         messages=[
-            {"role": "user", "content": user_input}
+            {"role": "user", "content": content}
         ]
     )
 
     reply_text = response.content[0].text
-
     send_feishu_message(user_id, reply_text)
 
     return {"status": "ok"}
+
