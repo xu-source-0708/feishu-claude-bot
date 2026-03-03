@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, JSONResponse
+from fastapi import FastAPI, Request
 import requests
 import json
 import anthropic
@@ -35,6 +35,8 @@ def send_feishu_message(user_id, content):
         "content": json.dumps({"text": content})
     }
     requests.post(url, headers=headers, json=data)
+
+from fastapi.responses import JSONResponse
 
 @app.post("/webhook")
 async def feishu_webhook(request: Request):
